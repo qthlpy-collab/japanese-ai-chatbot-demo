@@ -1,0 +1,326 @@
+<<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Japanese Learning Chatbot Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+    }
+
+    .chat-scroll {
+      height: 62vh;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+    }
+
+    .bubble {
+      white-space: pre-line;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <div class="max-w-6xl mx-auto p-4 md:p-6">
+    <header class="mb-6">
+      <h1 class="text-3xl font-bold text-slate-900">Japanese Learning Chatbot Demo</h1>
+      <p class="text-slate-600 mt-2">
+        Static prototype for vocabulary practice, simple conversation, and feedback on common mistakes.
+      </p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <aside class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+        <h2 class="text-lg font-semibold mb-4">Practice Settings</h2>
+
+        <label class="block text-sm font-medium mb-2">Scenario</label>
+        <select id="scenarioSelect" class="w-full border border-slate-300 rounded-xl p-3 mb-4 bg-white">
+          <option value="cafe">Café</option>
+          <option value="shop">Convenience Store</option>
+          <option value="selfintro">Self Introduction</option>
+        </select>
+
+        <label class="block text-sm font-medium mb-2">Learning Goal</label>
+        <div class="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4" id="goalBox">
+          Practice ordering drinks politely and using simple natural Japanese.
+        </div>
+
+        <button
+          id="startBtn"
+          class="w-full bg-slate-900 text-white py-3 rounded-xl font-medium hover:bg-slate-800 transition"
+        >
+          Start Practice
+        </button>
+
+        <div class="mt-5 border-t border-slate-200 pt-4">
+          <h3 class="font-semibold mb-2">Demo Features</h3>
+          <ul class="text-sm text-slate-600 space-y-2">
+            <li>• Simulated chatbot conversation</li>
+            <li>• Basic mistake detection</li>
+            <li>• Correction and short explanation</li>
+            <li>• Simple feedback log for research demo</li>
+          </ul>
+        </div>
+      </aside>
+
+      <main class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+          <div>
+            <div class="font-semibold">Chat Window</div>
+            <div class="text-sm text-slate-500" id="scenarioLabel">Scenario: Café</div>
+          </div>
+          <div class="text-xs px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+            Static AI Demo
+          </div>
+        </div>
+
+        <div id="chat" class="chat-scroll p-5 space-y-4"></div>
+
+        <div class="px-5 py-4 border-t border-slate-200 bg-white">
+          <div class="flex gap-2">
+            <input
+              id="userInput"
+              type="text"
+              placeholder="Type your Japanese sentence..."
+              class="flex-1 border border-slate-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-slate-300"
+            />
+            <button
+              id="sendBtn"
+              class="bg-blue-600 text-white px-6 rounded-xl font-medium hover:bg-blue-700 transition"
+            >
+              Send
+            </button>
+          </div>
+          <p class="text-xs text-slate-500 mt-2">
+            Example: コーヒーをください / はじめまして、りょうです / 水ください
+          </p>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const chatEl = document.getElementById("chat");
+    const userInputEl = document.getElementById("userInput");
+    const scenarioSelectEl = document.getElementById("scenarioSelect");
+    const scenarioLabelEl = document.getElementById("scenarioLabel");
+    const goalBoxEl = document.getElementById("goalBox");
+
+    let started = false;
+    let currentScenario = "cafe";
+
+    const scenarioConfig = {
+      cafe: {
+        label: "Café",
+        goal: "Practice ordering drinks politely and using simple natural Japanese.",
+        opening: "いらっしゃいませ。ご注文はいかがしますか？"
+      },
+      shop: {
+        label: "Convenience Store",
+        goal: "Practice buying simple items and asking short questions.",
+        opening: "いらっしゃいませ。何をお探しですか？"
+      },
+      selfintro: {
+        label: "Self Introduction",
+        goal: "Practice introducing yourself in simple and natural Japanese.",
+        opening: "こんにちは。まず、簡単に自己紹介をしてください。"
+      }
+    };
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function addMessage(role, text) {
+      const wrapper = document.createElement("div");
+      wrapper.className = role === "user" ? "flex justify-end" : "flex justify-start";
+
+      const bubble = document.createElement("div");
+      bubble.className = [
+        "bubble",
+        "max-w-[85%]",
+        "px-4 py-3 rounded-2xl text-sm leading-6",
+        role === "user"
+          ? "bg-blue-600 text-white rounded-br-md"
+          : "bg-slate-100 text-slate-800 border border-slate-200 rounded-bl-md"
+      ].join(" ");
+
+      bubble.innerHTML = role === "assistant"
+        ? `<div class="text-xs font-semibold text-slate-500 mb-1">AI Feedback</div>${escapeHtml(text)}`
+        : escapeHtml(text);
+
+      wrapper.appendChild(bubble);
+      chatEl.appendChild(wrapper);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    function resetChat() {
+      chatEl.innerHTML = "";
+      started = true;
+      const config = scenarioConfig[currentScenario];
+      scenarioLabelEl.textContent = `Scenario: ${config.label}`;
+      goalBoxEl.textContent = config.goal;
+      addMessage("assistant", config.opening);
+    }
+
+    function getCorrectionFeedback(input) {
+      const text = input.trim();
+
+      if (!text) {
+        return "Please enter a sentence.";
+      }
+
+      // Common unnatural or incorrect patterns for demo use
+      if (text.includes("飲みたいですか") && !text.endsWith("か")) {
+        return [
+          "❌ This sentence is unnatural.",
+          "Suggested correction: コーヒーを飲みたいです。",
+          "Reason: 〜たいです is used to express your own desire. Adding ですか changes it into a question, so it does not fit this meaning."
+        ].join("\n");
+      }
+
+      if (text === "水ください" || text.includes("水ください")) {
+        return [
+          "△ Understandable, but a little rough.",
+          "More natural: 水をください。",
+          "More polite: お水をください。",
+          "Reason: Adding を makes the sentence more complete and natural."
+        ].join("\n");
+      }
+
+      if (text.includes("わたしは") && currentScenario === "cafe") {
+        return [
+          "〇 Your meaning is clear.",
+          "More natural: コーヒーをください。",
+          "Reason: In daily conversation, わたしは is often omitted when the subject is obvious."
+        ].join("\n");
+      }
+
+      if (text.includes("はじめまして") && !text.includes("です")) {
+        return [
+          "〇 Good start.",
+          "You can make it more complete:",
+          "はじめまして。りょうです。よろしくお願いします。",
+          "Reason: Self-introduction in Japanese often ends with よろしくお願いします."
+        ].join("\n");
+      }
+
+      if (text.includes("コーヒー") && !text.includes("ください") && currentScenario === "cafe") {
+        return [
+          "〇 I understand what you want.",
+          "More natural: コーヒーをください。",
+          "Reason: Using をください makes your order clearer and more natural in a café."
+        ].join("\n");
+      }
+
+      if (text.includes("コンビニ") && currentScenario === "shop") {
+        return [
+          "〇 Good sentence.",
+          "You may also say: おにぎりはありますか。",
+          "Reason: はありますか is useful when asking whether an item is available."
+        ].join("\n");
+      }
+
+      if (text.endsWith("？") || text.endsWith("?")) {
+        return [
+          "〇 Nice question.",
+          "The sentence form looks fine.",
+          "Try adding one more sentence to continue the conversation."
+        ].join("\n");
+      }
+
+      return [
+        "〇 Good try.",
+        "Your sentence is understandable.",
+        "Next step: make it a little longer or more polite.",
+        currentScenario === "selfintro"
+          ? "Example: はじめまして。りょうです。中国から来ました。"
+          : currentScenario === "shop"
+            ? "Example: おにぎりをください。"
+            : "Example: コーヒーをください。"
+      ].join("\n");
+    }
+
+    function getConversationReply(input) {
+      const text = input.trim();
+
+      if (currentScenario === "cafe") {
+        if (text.includes("コーヒー")) return "ありがとうございます。ホットとアイス、どちらになさいますか？";
+        if (text.includes("アイス")) return "かしこまりました。サイズはいかがしますか？";
+        if (text.includes("ホット")) return "かしこまりました。店内でお召し上がりですか？";
+      }
+
+      if (currentScenario === "shop") {
+        if (text.includes("おにぎり")) return "はい、あります。ツナマヨとさけがあります。";
+        if (text.includes("ありますか")) return "はい、あります。ほかに何か必要ですか？";
+      }
+
+      if (currentScenario === "selfintro") {
+        if (text.includes("です")) return "ありがとうございます。では、趣味は何ですか？";
+        if (text.includes("よろしく")) return "こちらこそ、よろしくお願いします。日本語の勉強はどうですか？";
+      }
+
+      return "いいですね。もう少し詳しく言ってみてください。";
+    }
+
+    function buildAssistantMessage(input) {
+      const feedback = getCorrectionFeedback(input);
+      const reply = getConversationReply(input);
+      return `${feedback}\n\n${reply}`;
+    }
+
+    function sendMessage() {
+      const text = userInputEl.value.trim();
+      if (!text) return;
+
+      if (!started) {
+        resetChat();
+      }
+
+      addMessage("user", text);
+      userInputEl.value = "";
+
+      window.setTimeout(() => {
+        addMessage("assistant", buildAssistantMessage(text));
+      }, 350);
+    }
+
+    scenarioSelectEl.addEventListener("change", () => {
+      currentScenario = scenarioSelectEl.value;
+      const config = scenarioConfig[currentScenario];
+      scenarioLabelEl.textContent = `Scenario: ${config.label}`;
+      goalBoxEl.textContent = config.goal;
+      if (started) {
+        resetChat();
+      }
+    });
+
+    document.getElementById("startBtn").addEventListener("click", () => {
+      currentScenario = scenarioSelectEl.value;
+      resetChat();
+      userInputEl.focus();
+    });
+
+    document.getElementById("sendBtn").addEventListener("click", sendMessage);
+
+    userInputEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Initial state
+    const initConfig = scenarioConfig[currentScenario];
+    scenarioLabelEl.textContent = `Scenario: ${initConfig.label}`;
+    goalBoxEl.textContent = initConfig.goal;
+  </script>
+</body>
+</html>
